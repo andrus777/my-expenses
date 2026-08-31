@@ -1,0 +1,58 @@
+import os
+from datetime import timedelta
+
+
+class BaseConfig:
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "DATABASE_URL",
+        "postgresql+psycopg://my_expenses:change-me-for-local-development@localhost:5432/my_expenses",
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "development-only-change-me")
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    RATELIMIT_STORAGE_URI = REDIS_URL
+    RATELIMIT_HEADERS_ENABLED = True
+    CELERY = {
+        "broker_url": REDIS_URL,
+        "result_backend": REDIS_URL,
+        "task_ignore_result": True,
+        "broker_connection_retry_on_startup": True,
+    }
+    JSON_SORT_KEYS = False
+
+
+class DevelopmentConfig(BaseConfig):
+    DEBUG = True
+
+
+class TestingConfig(BaseConfig):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite+pysqlite:///:memory:"
+    JWT_SECRET_KEY = "testing-only-secret-that-is-at-least-32-bytes"
+    RATELIMIT_STORAGE_URI = "memory://"
+    RATELIMIT_ENABLED = False
+    CELERY = {**BaseConfig.CELERY, "task_always_eager": True, "task_eager_propagates": True}
+
+
+class ProductionConfig(BaseConfig):
+    DEBUG = False
+    TESTING = False
+
+
+CONFIGS = {
+    "development": DevelopmentConfig,
+    "testing": TestingConfig,
+    "production": ProductionConfig,
+}
+
+
+def get_config(name: str | None = None) -> type[BaseConfig]:
+    environment = name or os.getenv("APP_ENV", "development")
+    try:
+        return CONFIGS[environment]
+    except KeyError as error:
+        supported = ", ".join(sorted(CONFIGS))
+        message = f"Unknown APP_ENV '{environment}'. Expected one of: {supported}"
+        raise RuntimeError(message) from error
