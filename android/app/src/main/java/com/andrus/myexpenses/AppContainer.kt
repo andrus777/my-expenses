@@ -9,18 +9,24 @@ import com.andrus.myexpenses.data.local.EncryptedAuthLocalDataSource
 import com.andrus.myexpenses.data.local.RoomUserLocalDataSource
 import com.andrus.myexpenses.data.remote.AccessTokenInterceptor
 import com.andrus.myexpenses.data.remote.AuthApi
+import com.andrus.myexpenses.data.remote.ExpenseApi
+import com.andrus.myexpenses.data.remote.RetrofitExpenseRemoteDataSource
 import com.andrus.myexpenses.data.remote.ResponseMapper
 import com.andrus.myexpenses.data.remote.RetrofitAuthRemoteDataSource
 import com.andrus.myexpenses.data.remote.RetrofitUserRemoteDataSource
 import com.andrus.myexpenses.data.remote.TokenRefreshAuthenticator
 import com.andrus.myexpenses.data.remote.UserApi
 import com.andrus.myexpenses.data.repository.DefaultAuthRepository
+import com.andrus.myexpenses.data.repository.DefaultExpenseRepository
 import com.andrus.myexpenses.domain.repository.AuthRepository
+import com.andrus.myexpenses.domain.repository.ExpenseRepository
+import com.andrus.myexpenses.tasks.WorkManagerSyncScheduler
 import com.google.gson.Gson
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import kotlinx.coroutines.flow.map
 
 private val Context.authDataStore by preferencesDataStore(name = "secure_auth")
 
@@ -29,7 +35,9 @@ class AppContainer(context: Context) {
     private val authLocal =
         EncryptedAuthLocalDataSource(context.authDataStore, AndroidKeyStoreTokenCipher())
     private val database =
-        Room.databaseBuilder(context, AppDatabase::class.java, "my-expenses.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "my-expenses.db")
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     private val userLocal = RoomUserLocalDataSource(database.userDao())
     private val logging =
         HttpLoggingInterceptor().apply {
@@ -57,6 +65,18 @@ class AppContainer(context: Context) {
             ),
             authLocal = authLocal,
             userLocal = userLocal,
+        )
+
+    val expenseRepository: ExpenseRepository =
+        DefaultExpenseRepository(
+            expenseDao = database.expenseDao(),
+            categoryDao = database.categoryDao(),
+            remote = RetrofitExpenseRemoteDataSource(
+                authenticatedRetrofit.create(ExpenseApi::class.java),
+                ResponseMapper(gson),
+            ),
+            currentUserId = userLocal.user.map { it?.id },
+            scheduler = WorkManagerSyncScheduler(context),
         )
 
     private fun retrofit(client: OkHttpClient): Retrofit =

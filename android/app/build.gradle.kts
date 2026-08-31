@@ -54,6 +54,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("androidx.navigation:navigation-compose:2.9.8")
+    implementation("androidx.work:work-runtime-ktx:2.11.0")
 
     implementation("androidx.datastore:datastore-preferences:1.2.0")
     implementation("androidx.room:room-runtime:2.8.4")
@@ -69,6 +70,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.6")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("app.cash.turbine:turbine:1.2.1")
+    testImplementation("androidx.work:work-testing:2.11.0")
 }
 
 ktlint {

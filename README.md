@@ -65,6 +65,12 @@ Stage 4 provides registration, login, session restoration through `GET /api/v1/u
 and the main four-tab application shell. Tokens are encrypted with an Android Keystore key
 before being persisted in DataStore; Room stores only the non-secret cached user profile.
 
+Stage 5 makes expenses offline-first. Adds, edits and deletes update Room immediately and are
+sent by a network-constrained WorkManager job. Pending operations survive process restarts,
+temporary failures use exponential backoff, and permanent failures are shown as `SYNC_ERROR`
+with a manual retry action. Categories must be loaded online once before the first offline add.
+See `docs/adr/0003-android-offline-first-expense-sync.md` for reconciliation details.
+
 The debug build connects to `http://10.0.2.2:8000/api/v1/` from the Android emulator.
 Override it when needed with `-PAPI_BASE_URL=https://example.com/api/v1/`. Cleartext traffic
 is enabled only for debug builds. Build and run unit tests with:

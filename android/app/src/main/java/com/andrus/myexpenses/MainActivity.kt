@@ -12,7 +12,7 @@ class MainActivity : ComponentActivity() {
         val container = (application as MyExpensesApplication).container
         setContent {
             MyExpensesTheme {
-                MyExpensesApp(container.authRepository)
+                MyExpensesApp(container.authRepository, container.expenseRepository)
             }
         }
     }
