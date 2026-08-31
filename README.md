@@ -71,6 +71,11 @@ temporary failures use exponential backoff, and permanent failures are shown as 
 with a manual retry action. Categories must be loaded online once before the first offline add.
 See `docs/adr/0003-android-offline-first-expense-sync.md` for reconciliation details.
 
+Stage 6 adds subscription CRUD and atomic, idempotent payment confirmation. Each confirmed payment
+creates an expense, appends payment history and advances the next payment date. The Android client
+shows upcoming payments and schedules local notifications 7, 3 and 1 day before payment at 09:00.
+Notification permission is requested on Android 13 and newer.
+
 The debug build connects to `http://10.0.2.2:8000/api/v1/` from the Android emulator.
 Override it when needed with `-PAPI_BASE_URL=https://example.com/api/v1/`. Cleartext traffic
 is enabled only for debug builds. Build and run unit tests with:

@@ -22,6 +22,7 @@ import com.andrus.myexpenses.domain.model.Expense
 import com.andrus.myexpenses.domain.model.SyncStatus
 import com.andrus.myexpenses.domain.repository.AuthRepository
 import com.andrus.myexpenses.domain.repository.ExpenseRepository
+import com.andrus.myexpenses.domain.repository.SubscriptionRepository
 import com.andrus.myexpenses.presentation.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -31,11 +32,18 @@ private const val REGISTER = "register"
 private const val MAIN = "main"
 
 @Composable
-fun MyExpensesApp(authRepository: AuthRepository, expenseRepository: ExpenseRepository) {
+fun MyExpensesApp(
+    authRepository: AuthRepository,
+    expenseRepository: ExpenseRepository,
+    subscriptionRepository: SubscriptionRepository,
+) {
     val navController = rememberNavController()
     val appViewModel: AppViewModel = viewModel(factory = AppViewModel.Factory(authRepository))
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory(authRepository))
     val expenseViewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModel.Factory(expenseRepository))
+    val subscriptionViewModel: SubscriptionViewModel = viewModel(
+        factory = SubscriptionViewModel.Factory(subscriptionRepository, expenseRepository),
+    )
     val appState by appViewModel.state.collectAsStateWithLifecycle()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(appState) {
@@ -50,7 +58,10 @@ fun MyExpensesApp(authRepository: AuthRepository, expenseRepository: ExpenseRepo
             }
             else -> Unit
         }
-        if (appState is UiState.Content) expenseViewModel.refresh()
+        if (appState is UiState.Content) {
+            expenseViewModel.refresh()
+            subscriptionViewModel.refresh()
+        }
     }
     NavHost(navController, startDestination = LOGIN) {
         composable(LOGIN) {
@@ -67,7 +78,7 @@ fun MyExpensesApp(authRepository: AuthRepository, expenseRepository: ExpenseRepo
                 authViewModel::register,
             ) { navController.popBackStack() }
         }
-        composable(MAIN) { MainScreen(expenseViewModel, appViewModel::logout) }
+        composable(MAIN) { MainScreen(expenseViewModel, subscriptionViewModel, appViewModel::logout) }
     }
     if (appState is UiState.Loading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -88,7 +99,11 @@ private val destinations = listOf(
 )
 
 @Composable
-private fun MainScreen(viewModel: ExpenseViewModel, onLogout: () -> Unit) {
+private fun MainScreen(
+    viewModel: ExpenseViewModel,
+    subscriptionViewModel: SubscriptionViewModel,
+    onLogout: () -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
@@ -138,7 +153,7 @@ private fun MainScreen(viewModel: ExpenseViewModel, onLogout: () -> Unit) {
                     }
                 }
             }
-            composable("subscriptions") { Placeholder("Подписки пока не добавлены") }
+            composable("subscriptions") { SubscriptionScreen(subscriptionViewModel) }
             composable("statistics") { Placeholder("Статистика пока недоступна") }
         }
     }

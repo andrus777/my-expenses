@@ -32,6 +32,9 @@ class User(db.Model):
     expenses: Mapped[list["Expense"]] = relationship(  # noqa: F821
         back_populates="user", cascade="all, delete-orphan"
     )
+    subscriptions: Mapped[list["Subscription"]] = relationship(  # noqa: F821
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def to_dict(self) -> dict[str, str]:
         return {

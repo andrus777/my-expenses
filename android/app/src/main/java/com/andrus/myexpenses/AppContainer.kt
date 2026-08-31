@@ -16,10 +16,14 @@ import com.andrus.myexpenses.data.remote.RetrofitAuthRemoteDataSource
 import com.andrus.myexpenses.data.remote.RetrofitUserRemoteDataSource
 import com.andrus.myexpenses.data.remote.TokenRefreshAuthenticator
 import com.andrus.myexpenses.data.remote.UserApi
+import com.andrus.myexpenses.data.remote.SubscriptionApi
 import com.andrus.myexpenses.data.repository.DefaultAuthRepository
 import com.andrus.myexpenses.data.repository.DefaultExpenseRepository
+import com.andrus.myexpenses.data.repository.DefaultSubscriptionRepository
 import com.andrus.myexpenses.domain.repository.AuthRepository
 import com.andrus.myexpenses.domain.repository.ExpenseRepository
+import com.andrus.myexpenses.domain.repository.SubscriptionRepository
+import com.andrus.myexpenses.tasks.WorkManagerSubscriptionNotificationScheduler
 import com.andrus.myexpenses.tasks.WorkManagerSyncScheduler
 import com.google.gson.Gson
 import okhttp3.OkHttpClient
@@ -77,6 +81,13 @@ class AppContainer(context: Context) {
             ),
             currentUserId = userLocal.user.map { it?.id },
             scheduler = WorkManagerSyncScheduler(context),
+        )
+
+    val subscriptionRepository: SubscriptionRepository =
+        DefaultSubscriptionRepository(
+            authenticatedRetrofit.create(SubscriptionApi::class.java),
+            ResponseMapper(gson),
+            WorkManagerSubscriptionNotificationScheduler(context),
         )
 
     private fun retrofit(client: OkHttpClient): Retrofit =

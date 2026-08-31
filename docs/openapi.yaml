@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: My Expenses API
-  version: 0.3.0
+  version: 0.4.0
 paths:
   /api/v1/auth/register:
     post:
@@ -222,6 +222,67 @@ paths:
       responses:
         "204": {description: Expense soft-deleted}
         "404": {$ref: "#/components/responses/ApiError"}
+  /api/v1/subscriptions:
+    get:
+      summary: List subscriptions ordered by next payment date
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Subscription list}
+    post:
+      summary: Create a subscription
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/SubscriptionInput"}
+      responses:
+        "201": {description: Subscription created}
+        "400": {$ref: "#/components/responses/ApiError"}
+  /api/v1/subscriptions/{subscription_id}:
+    parameters:
+      - {name: subscription_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      summary: Get a subscription
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Subscription}
+        "404": {$ref: "#/components/responses/ApiError"}
+    patch:
+      summary: Update a subscription
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Updated subscription}
+    delete:
+      summary: Soft-delete a subscription
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Deleted}
+  /api/v1/subscriptions/{subscription_id}/payments:
+    parameters:
+      - {name: subscription_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      summary: List subscription payment history
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Payment history}
+    post:
+      summary: Atomically confirm a subscription payment
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_operation_id]
+              properties:
+                client_operation_id: {type: string, format: uuid}
+                payment_date: {type: string, format: date}
+      responses:
+        "201": {description: Payment, expense, and next date created}
+        "200": {description: Idempotent replay}
+        "409": {$ref: "#/components/responses/ApiError"}
 components:
   securitySchemes:
     bearerAuth:
@@ -229,6 +290,18 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    SubscriptionInput:
+      type: object
+      required: [name, category_id, amount, frequency, next_payment_date]
+      properties:
+        name: {type: string, maxLength: 150}
+        category_id: {type: string, format: uuid}
+        amount: {$ref: "#/components/schemas/Money"}
+        currency: {type: string, minLength: 3, maxLength: 3, default: RUB}
+        frequency: {type: string, enum: [WEEKLY, MONTHLY, QUARTERLY, HALF_YEAR, YEARLY, CUSTOM]}
+        custom_interval_days: {type: [integer, "null"], minimum: 1}
+        next_payment_date: {type: string, format: date}
+        comment: {type: [string, "null"]}
     Money:
       type: string
       pattern: '^\d{1,16}(\.\d{1,2})?$'
