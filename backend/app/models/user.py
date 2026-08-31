@@ -26,6 +26,12 @@ class User(db.Model):
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(  # noqa: F821
         back_populates="user", cascade="all, delete-orphan"
     )
+    categories: Mapped[list["Category"]] = relationship(  # noqa: F821
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    expenses: Mapped[list["Expense"]] = relationship(  # noqa: F821
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def to_dict(self) -> dict[str, str]:
         return {

@@ -41,6 +41,17 @@ Authentication endpoints are under `/api/v1`:
 
 Access tokens expire after 15 minutes. Refresh tokens expire after 30 days, rotate on refresh, and are stored server-side so logout and rotation revoke them immediately. See `docs/openapi.yaml` for the HTTP contract.
 
+Stage 3 adds system and user categories plus offline-safe expense CRUD:
+
+- `GET|POST /api/v1/categories` and `GET|PATCH|DELETE /api/v1/categories/{id}`;
+- `GET|POST /api/v1/expenses` and `GET|PATCH|DELETE /api/v1/expenses/{id}`;
+- expense amounts are decimal strings such as `"1250.50"`;
+- every expense mutation carries a UUID `client_operation_id`;
+- expense deletion is soft deletion;
+- expense lists support pagination, dates, category, amount, currency, source, search and sorting filters.
+
+System categories are inserted by migration and cannot be changed or deleted. User-owned resources are always scoped to the authenticated user.
+
 ## Repository layout
 
 - `android/` — Android client (introduced in a later stage)

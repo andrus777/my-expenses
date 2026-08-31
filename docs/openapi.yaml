@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: My Expenses API
-  version: 0.2.0
+  version: 0.3.0
 paths:
   /api/v1/auth/register:
     post:
@@ -91,6 +91,137 @@ paths:
                     $ref: "#/components/schemas/User"
         "401":
           $ref: "#/components/responses/ApiError"
+  /api/v1/categories:
+    get:
+      summary: List system and owned categories
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Visible categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: "#/components/schemas/Category"}
+    post:
+      summary: Create a user category
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string, maxLength: 100}
+      responses:
+        "201": {description: Category created}
+        "400": {$ref: "#/components/responses/ApiError"}
+        "409": {$ref: "#/components/responses/ApiError"}
+  /api/v1/categories/{category_id}:
+    parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      summary: Get a visible category
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Category}
+        "404": {$ref: "#/components/responses/ApiError"}
+    patch:
+      summary: Rename an owned category
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string, maxLength: 100}
+      responses:
+        "200": {description: Category updated}
+        "403": {$ref: "#/components/responses/ApiError"}
+        "404": {$ref: "#/components/responses/ApiError"}
+    delete:
+      summary: Delete an unused owned category
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Category deleted}
+        "403": {$ref: "#/components/responses/ApiError"}
+        "404": {$ref: "#/components/responses/ApiError"}
+        "409": {$ref: "#/components/responses/ApiError"}
+  /api/v1/expenses:
+    get:
+      summary: List owned expenses
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: per_page, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: date_from, in: query, schema: {type: string, format: date}}
+        - {name: date_to, in: query, schema: {type: string, format: date}}
+        - {name: category_id, in: query, schema: {type: string, format: uuid}}
+        - {name: min_amount, in: query, schema: {$ref: "#/components/schemas/Money"}}
+        - {name: max_amount, in: query, schema: {$ref: "#/components/schemas/Money"}}
+        - {name: currency, in: query, schema: {type: string, minLength: 3, maxLength: 3}}
+        - {name: source, in: query, schema: {type: string, enum: [MANUAL, RECEIPT, SUBSCRIPTION, SYNC]}}
+        - {name: search, in: query, schema: {type: string, maxLength: 100}}
+        - {name: sort, in: query, schema: {type: string, enum: [expense_date, amount, created_at]}}
+        - {name: order, in: query, schema: {type: string, enum: [asc, desc]}}
+      responses:
+        "200": {description: Paginated expenses}
+        "400": {$ref: "#/components/responses/ApiError"}
+    post:
+      summary: Create an expense idempotently
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ExpenseInput"}
+      responses:
+        "201": {description: Expense created}
+        "200": {description: Existing equivalent operation returned}
+        "400": {$ref: "#/components/responses/ApiError"}
+        "404": {$ref: "#/components/responses/ApiError"}
+        "409": {$ref: "#/components/responses/ApiError"}
+  /api/v1/expenses/{expense_id}:
+    parameters:
+      - name: expense_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      summary: Get an owned expense
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Expense}
+        "404": {$ref: "#/components/responses/ApiError"}
+    patch:
+      summary: Partially update an owned expense
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ExpensePatch"}
+      responses:
+        "200": {description: Expense updated}
+        "400": {$ref: "#/components/responses/ApiError"}
+        "404": {$ref: "#/components/responses/ApiError"}
+    delete:
+      summary: Soft-delete an owned expense
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Expense soft-deleted}
+        "404": {$ref: "#/components/responses/ApiError"}
 components:
   securitySchemes:
     bearerAuth:
@@ -98,6 +229,43 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    Money:
+      type: string
+      pattern: '^\d{1,16}(\.\d{1,2})?$'
+      examples: ["1250.50"]
+    Category:
+      type: object
+      required: [id, name, is_system, created_at, updated_at]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        is_system: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ExpenseInput:
+      type: object
+      required: [category_id, amount, expense_date, client_operation_id]
+      properties:
+        category_id: {type: string, format: uuid}
+        amount: {$ref: "#/components/schemas/Money"}
+        currency: {type: string, default: RUB, minLength: 3, maxLength: 3}
+        expense_date: {type: string, format: date}
+        merchant: {type: [string, "null"], maxLength: 255}
+        description: {type: [string, "null"], maxLength: 500}
+        comment: {type: [string, "null"]}
+        source: {type: string, enum: [MANUAL, RECEIPT, SUBSCRIPTION, SYNC], default: MANUAL}
+        client_operation_id: {type: string, format: uuid}
+    ExpensePatch:
+      type: object
+      minProperties: 1
+      properties:
+        category_id: {type: string, format: uuid}
+        amount: {$ref: "#/components/schemas/Money"}
+        currency: {type: string, minLength: 3, maxLength: 3}
+        expense_date: {type: string, format: date}
+        merchant: {type: [string, "null"], maxLength: 255}
+        description: {type: [string, "null"], maxLength: 500}
+        comment: {type: [string, "null"]}
     Credentials:
       type: object
       additionalProperties: false
