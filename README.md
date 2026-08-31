@@ -54,7 +54,22 @@ System categories are inserted by migration and cannot be changed or deleted. Us
 
 ## Repository layout
 
-- `android/` — Android client (introduced in a later stage)
+- `android/` — Kotlin/Compose Android client
 - `backend/` — Flask API and Celery worker
 - `docs/` — architecture and ADR documentation
 - `postman/` — API collections (introduced with public APIs)
+
+## Android client
+
+Stage 4 provides registration, login, session restoration through `GET /api/v1/users/me`,
+and the main four-tab application shell. Tokens are encrypted with an Android Keystore key
+before being persisted in DataStore; Room stores only the non-secret cached user profile.
+
+The debug build connects to `http://10.0.2.2:8000/api/v1/` from the Android emulator.
+Override it when needed with `-PAPI_BASE_URL=https://example.com/api/v1/`. Cleartext traffic
+is enabled only for debug builds. Build and run unit tests with:
+
+```bash
+cd android
+./gradlew testDebugUnitTest assembleDebug ktlintCheck
+```

@@ -8,3 +8,7 @@ __pycache__/
 .mypy_cache/
 .coverage
 htmlcov/
+android/.gradle/
+android/local.properties
+android/**/build/
+*.iml
