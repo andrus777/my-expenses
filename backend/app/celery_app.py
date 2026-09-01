@@ -12,6 +12,7 @@ def init_celery(app: Flask) -> Celery:
 
     celery.Task = FlaskTask
     celery.config_from_object(app.config["CELERY"])
+    celery.autodiscover_tasks(["app.receipts"])
     celery.set_default()
     app.extensions["celery"] = celery
     return celery

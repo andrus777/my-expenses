@@ -10,6 +10,9 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://my_expenses:change-me-for-local-development@postgres:5432/my_expenses}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-development-only-change-me}
+      RECEIPT_PROVIDER: ${RECEIPT_PROVIDER:-fake}
+      RECEIPT_PROVIDER_URL: ${RECEIPT_PROVIDER_URL:-}
+      RECEIPT_PROVIDER_API_KEY: ${RECEIPT_PROVIDER_API_KEY:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -31,6 +34,9 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://my_expenses:change-me-for-local-development@postgres:5432/my_expenses}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-development-only-change-me}
+      RECEIPT_PROVIDER: ${RECEIPT_PROVIDER:-fake}
+      RECEIPT_PROVIDER_URL: ${RECEIPT_PROVIDER_URL:-}
+      RECEIPT_PROVIDER_API_KEY: ${RECEIPT_PROVIDER_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

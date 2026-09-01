@@ -22,6 +22,7 @@ import com.andrus.myexpenses.domain.model.Expense
 import com.andrus.myexpenses.domain.model.SyncStatus
 import com.andrus.myexpenses.domain.repository.AuthRepository
 import com.andrus.myexpenses.domain.repository.ExpenseRepository
+import com.andrus.myexpenses.domain.repository.ReceiptRepository
 import com.andrus.myexpenses.domain.repository.SubscriptionRepository
 import com.andrus.myexpenses.presentation.*
 import java.math.BigDecimal
@@ -36,6 +37,7 @@ fun MyExpensesApp(
     authRepository: AuthRepository,
     expenseRepository: ExpenseRepository,
     subscriptionRepository: SubscriptionRepository,
+    receiptRepository: ReceiptRepository,
 ) {
     val navController = rememberNavController()
     val appViewModel: AppViewModel = viewModel(factory = AppViewModel.Factory(authRepository))
@@ -44,6 +46,7 @@ fun MyExpensesApp(
     val subscriptionViewModel: SubscriptionViewModel = viewModel(
         factory = SubscriptionViewModel.Factory(subscriptionRepository, expenseRepository),
     )
+    val receiptViewModel: ReceiptViewModel = viewModel(factory = ReceiptViewModel.Factory(receiptRepository))
     val appState by appViewModel.state.collectAsStateWithLifecycle()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(appState) {
@@ -78,7 +81,7 @@ fun MyExpensesApp(
                 authViewModel::register,
             ) { navController.popBackStack() }
         }
-        composable(MAIN) { MainScreen(expenseViewModel, subscriptionViewModel, appViewModel::logout) }
+        composable(MAIN) { MainScreen(expenseViewModel, subscriptionViewModel, receiptViewModel, appViewModel::logout) }
     }
     if (appState is UiState.Loading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -102,6 +105,7 @@ private val destinations = listOf(
 private fun MainScreen(
     viewModel: ExpenseViewModel,
     subscriptionViewModel: SubscriptionViewModel,
+    receiptViewModel: ReceiptViewModel,
     onLogout: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -138,7 +142,13 @@ private fun MainScreen(
         },
     ) { padding ->
         NavHost(navController, "home", Modifier.padding(padding)) {
-            composable("home") { HomeScreen(state, onLogout) { navController.navigate("expense/edit/$it") } }
+            composable("home") {
+                HomeScreen(
+                    state,
+                    onLogout,
+                    { navController.navigate("receipt/add") },
+                ) { navController.navigate("expense/edit/$it") }
+            }
             composable("history") { HistoryScreen(state, viewModel::retry) { navController.navigate("expense/edit/$it") } }
             composable("expense/add") {
                 ExpenseForm(null, state.categories, viewModel::save, onDone = { navController.popBackStack() })
@@ -153,6 +163,9 @@ private fun MainScreen(
                     }
                 }
             }
+            composable("receipt/add") {
+                ReceiptScreen(receiptViewModel, state.categories) { navController.popBackStack() }
+            }
             composable("subscriptions") { SubscriptionScreen(subscriptionViewModel) }
             composable("statistics") { Placeholder("Статистика пока недоступна") }
         }
@@ -160,7 +173,12 @@ private fun MainScreen(
 }
 
 @Composable
-private fun HomeScreen(state: ExpensesUiState, onLogout: () -> Unit, onEdit: (String) -> Unit) {
+private fun HomeScreen(
+    state: ExpensesUiState,
+    onLogout: () -> Unit,
+    onReceipt: () -> Unit,
+    onEdit: (String) -> Unit,
+) {
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("Мои расходы", style = MaterialTheme.typography.headlineMedium)
         Text("Всего: ${state.expenses.sumOf { it.amountMinor }.money()} RUB")
@@ -168,6 +186,7 @@ private fun HomeScreen(state: ExpensesUiState, onLogout: () -> Unit, onEdit: (St
         Spacer(Modifier.height(16.dp))
         Text("Последние операции", style = MaterialTheme.typography.titleMedium)
         Box(Modifier.weight(1f)) { ExpenseList(state.expenses.take(5), onEdit) }
+        Button(onClick = onReceipt) { Text("Добавить по чеку") }
         TextButton(onClick = onLogout) { Text("Выйти") }
     }
 }

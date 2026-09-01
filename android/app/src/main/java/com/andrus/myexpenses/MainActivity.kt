@@ -21,6 +21,7 @@ class MainActivity : ComponentActivity() {
                     container.authRepository,
                     container.expenseRepository,
                     container.subscriptionRepository,
+                    container.receiptRepository,
                 )
             }
         }

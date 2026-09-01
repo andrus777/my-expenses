@@ -21,6 +21,10 @@ class BaseConfig:
         "broker_connection_retry_on_startup": True,
     }
     JSON_SORT_KEYS = False
+    RECEIPT_PROVIDER = os.getenv("RECEIPT_PROVIDER", "fake")
+    RECEIPT_PROVIDER_URL = os.getenv("RECEIPT_PROVIDER_URL")
+    RECEIPT_PROVIDER_API_KEY = os.getenv("RECEIPT_PROVIDER_API_KEY")
+    RECEIPT_PROVIDER_TIMEOUT_SECONDS = float(os.getenv("RECEIPT_PROVIDER_TIMEOUT_SECONDS", "10"))
 
 
 class DevelopmentConfig(BaseConfig):

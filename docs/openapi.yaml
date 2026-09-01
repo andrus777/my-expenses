@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: My Expenses API
-  version: 0.4.0
+  version: 0.5.0
 paths:
   /api/v1/auth/register:
     post:
@@ -281,6 +281,51 @@ paths:
                 payment_date: {type: string, format: date}
       responses:
         "201": {description: Payment, expense, and next date created}
+        "200": {description: Idempotent replay}
+        "409": {$ref: "#/components/responses/ApiError"}
+  /api/v1/receipts:
+    post:
+      summary: Queue receipt processing
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipt_data]
+              properties:
+                receipt_data: {type: string, maxLength: 4096}
+      responses:
+        "202": {description: Receipt job accepted}
+        "400": {$ref: "#/components/responses/ApiError"}
+  /api/v1/receipts/jobs/{job_id}:
+    get:
+      summary: Get receipt processing status and preview
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: job_id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: PENDING, PROCESSING, COMPLETED or FAILED job}
+        "404": {$ref: "#/components/responses/ApiError"}
+  /api/v1/receipts/{receipt_id}/finalize:
+    post:
+      summary: Idempotently create an Expense from a confirmed receipt
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: receipt_id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category_id, client_operation_id]
+              properties:
+                category_id: {type: string, format: uuid}
+                client_operation_id: {type: string, format: uuid}
+      responses:
+        "201": {description: Expense created}
         "200": {description: Idempotent replay}
         "409": {$ref: "#/components/responses/ApiError"}
 components:

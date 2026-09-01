@@ -11,6 +11,7 @@ import com.andrus.myexpenses.data.remote.AccessTokenInterceptor
 import com.andrus.myexpenses.data.remote.AuthApi
 import com.andrus.myexpenses.data.remote.ExpenseApi
 import com.andrus.myexpenses.data.remote.RetrofitExpenseRemoteDataSource
+import com.andrus.myexpenses.data.remote.ReceiptApi
 import com.andrus.myexpenses.data.remote.ResponseMapper
 import com.andrus.myexpenses.data.remote.RetrofitAuthRemoteDataSource
 import com.andrus.myexpenses.data.remote.RetrofitUserRemoteDataSource
@@ -19,9 +20,11 @@ import com.andrus.myexpenses.data.remote.UserApi
 import com.andrus.myexpenses.data.remote.SubscriptionApi
 import com.andrus.myexpenses.data.repository.DefaultAuthRepository
 import com.andrus.myexpenses.data.repository.DefaultExpenseRepository
+import com.andrus.myexpenses.data.repository.DefaultReceiptRepository
 import com.andrus.myexpenses.data.repository.DefaultSubscriptionRepository
 import com.andrus.myexpenses.domain.repository.AuthRepository
 import com.andrus.myexpenses.domain.repository.ExpenseRepository
+import com.andrus.myexpenses.domain.repository.ReceiptRepository
 import com.andrus.myexpenses.domain.repository.SubscriptionRepository
 import com.andrus.myexpenses.tasks.WorkManagerSubscriptionNotificationScheduler
 import com.andrus.myexpenses.tasks.WorkManagerSyncScheduler
@@ -88,6 +91,12 @@ class AppContainer(context: Context) {
             authenticatedRetrofit.create(SubscriptionApi::class.java),
             ResponseMapper(gson),
             WorkManagerSubscriptionNotificationScheduler(context),
+        )
+
+    val receiptRepository: ReceiptRepository =
+        DefaultReceiptRepository(
+            authenticatedRetrofit.create(ReceiptApi::class.java),
+            ResponseMapper(gson),
         )
 
     private fun retrofit(client: OkHttpClient): Retrofit =

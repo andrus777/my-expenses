@@ -76,6 +76,12 @@ creates an expense, appends payment history and advances the next payment date. 
 shows upcoming payments and schedules local notifications 7, 3 and 1 day before payment at 09:00.
 Notification permission is requested on Android 13 and newer.
 
+Stage 7 adds asynchronous receipt processing. `POST /api/v1/receipts` accepts fiscal/QR text and
+queues a Celery job; Android polls the backend for a normalized preview and never contacts an
+external receipt service. Local development uses `RECEIPT_PROVIDER=fake` and requires no API key.
+Set `RECEIPT_PROVIDER=external`, URL, key and timeout environment variables only when configuring a
+real adapter. Receipt confirmation is a separate idempotent operation that creates one Expense.
+
 The debug build connects to `http://10.0.2.2:8000/api/v1/` from the Android emulator.
 Override it when needed with `-PAPI_BASE_URL=https://example.com/api/v1/`. Cleartext traffic
 is enabled only for debug builds. Build and run unit tests with:
