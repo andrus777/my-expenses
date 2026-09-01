@@ -24,6 +24,7 @@ import com.andrus.myexpenses.domain.repository.AuthRepository
 import com.andrus.myexpenses.domain.repository.ExpenseRepository
 import com.andrus.myexpenses.domain.repository.ReceiptRepository
 import com.andrus.myexpenses.domain.repository.SubscriptionRepository
+import com.andrus.myexpenses.domain.repository.StatisticsRepository
 import com.andrus.myexpenses.presentation.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -38,6 +39,7 @@ fun MyExpensesApp(
     expenseRepository: ExpenseRepository,
     subscriptionRepository: SubscriptionRepository,
     receiptRepository: ReceiptRepository,
+    statisticsRepository: StatisticsRepository,
 ) {
     val navController = rememberNavController()
     val appViewModel: AppViewModel = viewModel(factory = AppViewModel.Factory(authRepository))
@@ -47,6 +49,7 @@ fun MyExpensesApp(
         factory = SubscriptionViewModel.Factory(subscriptionRepository, expenseRepository),
     )
     val receiptViewModel: ReceiptViewModel = viewModel(factory = ReceiptViewModel.Factory(receiptRepository))
+    val statisticsViewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory(statisticsRepository))
     val appState by appViewModel.state.collectAsStateWithLifecycle()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(appState) {
@@ -81,7 +84,9 @@ fun MyExpensesApp(
                 authViewModel::register,
             ) { navController.popBackStack() }
         }
-        composable(MAIN) { MainScreen(expenseViewModel, subscriptionViewModel, receiptViewModel, appViewModel::logout) }
+        composable(MAIN) {
+            MainScreen(expenseViewModel, subscriptionViewModel, receiptViewModel, statisticsViewModel, appViewModel::logout)
+        }
     }
     if (appState is UiState.Loading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -106,6 +111,7 @@ private fun MainScreen(
     viewModel: ExpenseViewModel,
     subscriptionViewModel: SubscriptionViewModel,
     receiptViewModel: ReceiptViewModel,
+    statisticsViewModel: StatisticsViewModel,
     onLogout: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -167,7 +173,7 @@ private fun MainScreen(
                 ReceiptScreen(receiptViewModel, state.categories) { navController.popBackStack() }
             }
             composable("subscriptions") { SubscriptionScreen(subscriptionViewModel) }
-            composable("statistics") { Placeholder("Статистика пока недоступна") }
+            composable("statistics") { StatisticsScreen(statisticsViewModel) }
         }
     }
 }

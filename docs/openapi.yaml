@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: My Expenses API
-  version: 0.5.0
+  version: 0.6.0
 paths:
   /api/v1/auth/register:
     post:
@@ -328,7 +328,67 @@ paths:
         "201": {description: Expense created}
         "200": {description: Idempotent replay}
         "409": {$ref: "#/components/responses/ApiError"}
+  /api/v1/statistics/summary:
+    get:
+      summary: Expense totals and equal-length previous-period comparison
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/DateFrom"}
+        - {$ref: "#/components/parameters/DateTo"}
+        - {$ref: "#/components/parameters/Currency"}
+      responses:
+        "200": {description: Total, operation count, daily average and comparison}
+        "400": {$ref: "#/components/responses/ApiError"}
+  /api/v1/statistics/categories:
+    get:
+      summary: Expense distribution by category
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/DateFrom"}
+        - {$ref: "#/components/parameters/DateTo"}
+        - {$ref: "#/components/parameters/Currency"}
+      responses:
+        "200": {description: Category totals, counts and percentages}
+  /api/v1/statistics/timeline:
+    get:
+      summary: Expense timeline with zero-filled calendar buckets
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/DateFrom"}
+        - {$ref: "#/components/parameters/DateTo"}
+        - {$ref: "#/components/parameters/Currency"}
+        - name: interval
+          in: query
+          schema: {type: string, enum: [day, week, month]}
+          description: Automatically selected from the range length when omitted
+      responses:
+        "200": {description: Timeline points}
+        "400": {$ref: "#/components/responses/ApiError"}
+  /api/v1/statistics/subscriptions:
+    get:
+      summary: Project active subscription costs to monthly and yearly totals
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/Currency"}
+      responses:
+        "200": {description: Monthly/yearly totals and active subscription count}
 components:
+  parameters:
+    DateFrom:
+      name: date_from
+      in: query
+      schema: {type: string, format: date}
+      description: Inclusive start; defaults to 29 days before date_to
+    DateTo:
+      name: date_to
+      in: query
+      schema: {type: string, format: date}
+      description: Inclusive end; defaults to today
+    Currency:
+      name: currency
+      in: query
+      schema: {type: string, default: RUB, minLength: 3, maxLength: 3}
+      description: Single reporting currency; no implicit currency conversion is performed
   securitySchemes:
     bearerAuth:
       type: http

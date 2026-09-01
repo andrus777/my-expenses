@@ -82,6 +82,12 @@ external receipt service. Local development uses `RECEIPT_PROVIDER=fake` and req
 Set `RECEIPT_PROVIDER=external`, URL, key and timeout environment variables only when configuring a
 real adapter. Receipt confirmation is a separate idempotent operation that creates one Expense.
 
+Stage 8 adds authenticated backend analytics under `/api/v1/statistics`: summary and previous-period
+comparison, category distribution, day/week/month timeline, and projected subscription totals.
+Date ranges are inclusive and accept `date_from`/`date_to` in ISO format. The Android Statistics tab
+supports week, month, year and custom periods with explicit loading, empty and error states.
+Analytics never mixes currencies: `currency` defaults to `RUB`, and no exchange-rate conversion is implied.
+
 The debug build connects to `http://10.0.2.2:8000/api/v1/` from the Android emulator.
 Override it when needed with `-PAPI_BASE_URL=https://example.com/api/v1/`. Cleartext traffic
 is enabled only for debug builds. Build and run unit tests with:

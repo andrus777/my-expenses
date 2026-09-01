@@ -18,14 +18,17 @@ import com.andrus.myexpenses.data.remote.RetrofitUserRemoteDataSource
 import com.andrus.myexpenses.data.remote.TokenRefreshAuthenticator
 import com.andrus.myexpenses.data.remote.UserApi
 import com.andrus.myexpenses.data.remote.SubscriptionApi
+import com.andrus.myexpenses.data.remote.StatisticsApi
 import com.andrus.myexpenses.data.repository.DefaultAuthRepository
 import com.andrus.myexpenses.data.repository.DefaultExpenseRepository
 import com.andrus.myexpenses.data.repository.DefaultReceiptRepository
 import com.andrus.myexpenses.data.repository.DefaultSubscriptionRepository
+import com.andrus.myexpenses.data.repository.DefaultStatisticsRepository
 import com.andrus.myexpenses.domain.repository.AuthRepository
 import com.andrus.myexpenses.domain.repository.ExpenseRepository
 import com.andrus.myexpenses.domain.repository.ReceiptRepository
 import com.andrus.myexpenses.domain.repository.SubscriptionRepository
+import com.andrus.myexpenses.domain.repository.StatisticsRepository
 import com.andrus.myexpenses.tasks.WorkManagerSubscriptionNotificationScheduler
 import com.andrus.myexpenses.tasks.WorkManagerSyncScheduler
 import com.google.gson.Gson
@@ -96,6 +99,12 @@ class AppContainer(context: Context) {
     val receiptRepository: ReceiptRepository =
         DefaultReceiptRepository(
             authenticatedRetrofit.create(ReceiptApi::class.java),
+            ResponseMapper(gson),
+        )
+
+    val statisticsRepository: StatisticsRepository =
+        DefaultStatisticsRepository(
+            authenticatedRetrofit.create(StatisticsApi::class.java),
             ResponseMapper(gson),
         )
 
