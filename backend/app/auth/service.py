@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from flask import g, has_request_context
 from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
 from sqlalchemy.exc import IntegrityError
 
@@ -39,6 +40,7 @@ class AuthService:
             raise ApiError(
                 "EMAIL_ALREADY_EXISTS", "Пользователь с таким email уже существует", 409
             ) from error
+        self._mark_request_user(user)
         return user, tokens
 
     def login(self, credentials: Credentials) -> tuple[User, TokenPair]:
@@ -47,6 +49,7 @@ class AuthService:
             raise ApiError("INVALID_CREDENTIALS", "Неверный email или пароль", 401)
         tokens = self._issue_tokens(user)
         db.session.commit()
+        self._mark_request_user(user)
         return user, tokens
 
     def refresh(self, user: User, current_jti: str) -> TokenPair:
@@ -65,7 +68,13 @@ class AuthService:
         user = self.users.find_by_public_id(public_id)
         if user is None:
             raise ApiError("USER_NOT_FOUND", "Пользователь не найден", 404)
+        self._mark_request_user(user)
         return user
+
+    @staticmethod
+    def _mark_request_user(user: User) -> None:
+        if has_request_context():
+            g.user_id = str(user.public_id)
 
     def _issue_tokens(self, user: User) -> TokenPair:
         identity = str(user.public_id)

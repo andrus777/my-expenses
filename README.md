@@ -16,6 +16,17 @@ The API is available at `http://localhost:8000`:
 - `GET /health` reports that the process is alive;
 - `GET /ready` checks PostgreSQL and Redis connectivity.
 
+Every response includes `X-Request-ID`. Clients may supply a safe correlation ID (letters, digits,
+`.`, `_`, `:`, `-`, at most 128 characters); otherwise the API generates a UUID. Every error body
+contains the same value in `request_id`. Backend request logs are JSON and contain only safe metadata:
+method, path without query parameters, status, duration, request ID and authenticated user ID.
+Headers and request bodies are never logged.
+
+Set `LOG_LEVEL` to a standard Python logging level such as `DEBUG`, `INFO`, `WARNING` or `ERROR`.
+Redis connect/read timeouts, the PostgreSQL readiness statement timeout, and receipt-provider timeout
+are configured through the variables documented in `.env.example`. `/health` is process liveness only;
+`/ready` returns `503` unless both PostgreSQL and Redis respond.
+
 Run backend checks locally with Python 3.12+:
 
 ```bash

@@ -14,7 +14,12 @@ class Base(DeclarativeBase):
 
 class RedisClient:
     def init_app(self, app: Flask) -> None:
-        client = Redis.from_url(app.config["REDIS_URL"], decode_responses=True)
+        client = Redis.from_url(
+            app.config["REDIS_URL"],
+            decode_responses=True,
+            socket_connect_timeout=app.config["REDIS_CONNECT_TIMEOUT_SECONDS"],
+            socket_timeout=app.config["REDIS_SOCKET_TIMEOUT_SECONDS"],
+        )
         app.extensions["redis"] = client
 
     def get(self, app: Flask) -> Redis:

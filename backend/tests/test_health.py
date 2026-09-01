@@ -48,4 +48,5 @@ def test_ready_returns_503_when_a_dependency_is_unavailable(app, client):
     assert response.json == {
         "status": "not_ready",
         "checks": {"postgres": "ok", "redis": "unavailable"},
+        "request_id": response.headers["X-Request-ID"],
     }

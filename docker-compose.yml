@@ -10,9 +10,14 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://my_expenses:change-me-for-local-development@postgres:5432/my_expenses}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-development-only-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       RECEIPT_PROVIDER: ${RECEIPT_PROVIDER:-fake}
       RECEIPT_PROVIDER_URL: ${RECEIPT_PROVIDER_URL:-}
       RECEIPT_PROVIDER_API_KEY: ${RECEIPT_PROVIDER_API_KEY:-}
+      RECEIPT_PROVIDER_TIMEOUT_SECONDS: ${RECEIPT_PROVIDER_TIMEOUT_SECONDS:-10}
+      REDIS_CONNECT_TIMEOUT_SECONDS: ${REDIS_CONNECT_TIMEOUT_SECONDS:-3}
+      REDIS_SOCKET_TIMEOUT_SECONDS: ${REDIS_SOCKET_TIMEOUT_SECONDS:-3}
+      READINESS_DB_TIMEOUT_MS: ${READINESS_DB_TIMEOUT_MS:-3000}
     ports:
       - "8000:8000"
     depends_on:
@@ -25,7 +30,7 @@ services:
   worker:
     build:
       context: ./backend
-    command: celery -A worker:celery worker --loglevel=INFO
+    command: sh -c "celery -A worker:celery worker --loglevel=$${LOG_LEVEL:-INFO}"
     env_file:
       - path: .env
         required: false
@@ -34,9 +39,14 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://my_expenses:change-me-for-local-development@postgres:5432/my_expenses}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-development-only-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       RECEIPT_PROVIDER: ${RECEIPT_PROVIDER:-fake}
       RECEIPT_PROVIDER_URL: ${RECEIPT_PROVIDER_URL:-}
       RECEIPT_PROVIDER_API_KEY: ${RECEIPT_PROVIDER_API_KEY:-}
+      RECEIPT_PROVIDER_TIMEOUT_SECONDS: ${RECEIPT_PROVIDER_TIMEOUT_SECONDS:-10}
+      REDIS_CONNECT_TIMEOUT_SECONDS: ${REDIS_CONNECT_TIMEOUT_SECONDS:-3}
+      REDIS_SOCKET_TIMEOUT_SECONDS: ${REDIS_SOCKET_TIMEOUT_SECONDS:-3}
+      READINESS_DB_TIMEOUT_MS: ${READINESS_DB_TIMEOUT_MS:-3000}
     depends_on:
       postgres:
         condition: service_healthy

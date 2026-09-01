@@ -30,6 +30,10 @@ class ExternalReceiptProvider:
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:  # noqa: S310
                 payload = json.load(response)
+        except urllib.error.HTTPError as error:
+            if error.code in {408, 425, 429} or 500 <= error.code < 600:
+                raise TemporaryProviderError("receipt provider temporarily unavailable") from error
+            raise PermanentProviderError("receipt provider rejected the request") from error
         except (TimeoutError, urllib.error.URLError) as error:
             raise TemporaryProviderError("receipt provider temporarily unavailable") from error
         except (ValueError, KeyError, TypeError) as error:

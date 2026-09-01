@@ -3,6 +3,7 @@ from datetime import timedelta
 
 
 class BaseConfig:
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL",
         "postgresql+psycopg://my_expenses:change-me-for-local-development@localhost:5432/my_expenses",
@@ -25,6 +26,9 @@ class BaseConfig:
     RECEIPT_PROVIDER_URL = os.getenv("RECEIPT_PROVIDER_URL")
     RECEIPT_PROVIDER_API_KEY = os.getenv("RECEIPT_PROVIDER_API_KEY")
     RECEIPT_PROVIDER_TIMEOUT_SECONDS = float(os.getenv("RECEIPT_PROVIDER_TIMEOUT_SECONDS", "10"))
+    REDIS_CONNECT_TIMEOUT_SECONDS = float(os.getenv("REDIS_CONNECT_TIMEOUT_SECONDS", "3"))
+    REDIS_SOCKET_TIMEOUT_SECONDS = float(os.getenv("REDIS_SOCKET_TIMEOUT_SECONDS", "3"))
+    READINESS_DB_TIMEOUT_MS = int(os.getenv("READINESS_DB_TIMEOUT_MS", "3000"))
 
 
 class DevelopmentConfig(BaseConfig):

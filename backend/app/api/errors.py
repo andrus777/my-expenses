@@ -23,6 +23,10 @@ class ApiError(Exception):
 def error_response(
     code: str, message: str, status_code: int, details: dict[str, Any] | None = None
 ):
+    if not getattr(g, "request_id", None):
+        from uuid import uuid4
+
+        g.request_id = str(uuid4())
     return (
         jsonify(
             {
@@ -45,9 +49,23 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(HTTPException)
     def handle_http_error(error: HTTPException):  # type: ignore[no-untyped-def]
-        return error_response("HTTP_ERROR", error.description, error.code or 500)
+        status = error.code or 500
+        code, message = {
+            400: ("VALIDATION_ERROR", "Некорректный запрос"),
+            401: ("AUTHENTICATION_REQUIRED", "Требуется авторизация"),
+            403: ("FORBIDDEN", "Доступ запрещён"),
+            404: ("NOT_FOUND", "Ресурс не найден"),
+            409: ("CONFLICT", "Конфликт состояния ресурса"),
+        }.get(status, ("HTTP_ERROR", error.description))
+        return error_response(code, message, status)
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error: Exception):  # type: ignore[no-untyped-def]
-        app.logger.exception("Unhandled application error", exc_info=error)
+        app.logger.error(
+            "unhandled application error",
+            extra={
+                "event": "unhandled_error",
+                "request_id": getattr(g, "request_id", None),
+            },
+        )
         return error_response("INTERNAL_ERROR", "Внутренняя ошибка сервера", 500)
