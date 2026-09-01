@@ -9,6 +9,7 @@ import com.andrus.myexpenses.data.local.EncryptedAuthLocalDataSource
 import com.andrus.myexpenses.data.local.RoomUserLocalDataSource
 import com.andrus.myexpenses.data.remote.AccessTokenInterceptor
 import com.andrus.myexpenses.data.remote.AuthApi
+import com.andrus.myexpenses.data.remote.BudgetApi
 import com.andrus.myexpenses.data.remote.ExpenseApi
 import com.andrus.myexpenses.data.remote.RetrofitExpenseRemoteDataSource
 import com.andrus.myexpenses.data.remote.ReceiptApi
@@ -20,11 +21,13 @@ import com.andrus.myexpenses.data.remote.UserApi
 import com.andrus.myexpenses.data.remote.SubscriptionApi
 import com.andrus.myexpenses.data.remote.StatisticsApi
 import com.andrus.myexpenses.data.repository.DefaultAuthRepository
+import com.andrus.myexpenses.data.repository.DefaultBudgetRepository
 import com.andrus.myexpenses.data.repository.DefaultExpenseRepository
 import com.andrus.myexpenses.data.repository.DefaultReceiptRepository
 import com.andrus.myexpenses.data.repository.DefaultSubscriptionRepository
 import com.andrus.myexpenses.data.repository.DefaultStatisticsRepository
 import com.andrus.myexpenses.domain.repository.AuthRepository
+import com.andrus.myexpenses.domain.repository.BudgetRepository
 import com.andrus.myexpenses.domain.repository.ExpenseRepository
 import com.andrus.myexpenses.domain.repository.ReceiptRepository
 import com.andrus.myexpenses.domain.repository.SubscriptionRepository
@@ -105,6 +108,12 @@ class AppContainer(context: Context) {
     val statisticsRepository: StatisticsRepository =
         DefaultStatisticsRepository(
             authenticatedRetrofit.create(StatisticsApi::class.java),
+            ResponseMapper(gson),
+        )
+
+    val budgetRepository: BudgetRepository =
+        DefaultBudgetRepository(
+            authenticatedRetrofit.create(BudgetApi::class.java),
             ResponseMapper(gson),
         )
 

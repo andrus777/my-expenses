@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
                     container.subscriptionRepository,
                     container.receiptRepository,
                     container.statisticsRepository,
+                    container.budgetRepository,
                 )
             }
         }

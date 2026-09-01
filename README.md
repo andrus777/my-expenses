@@ -88,6 +88,11 @@ Date ranges are inclusive and accept `date_from`/`date_to` in ISO format. The An
 supports week, month, year and custom periods with explicit loading, empty and error states.
 Analytics never mixes currencies: `currency` defaults to `RUB`, and no exchange-rate conversion is implied.
 
+Stage 9 adds category budgets with explicit week/month/year/custom date ranges. Budget responses
+include spent, remaining and usage percentage calculated from non-deleted expenses in the same
+category and currency. Durable 80% and 100% threshold events are recorded once per budget period.
+Android shows compact progress on Home, a budget list/editor, and warning/exceeded states.
+
 The debug build connects to `http://10.0.2.2:8000/api/v1/` from the Android emulator.
 Override it when needed with `-PAPI_BASE_URL=https://example.com/api/v1/`. Cleartext traffic
 is enabled only for debug builds. Build and run unit tests with:

@@ -48,6 +48,8 @@ class CategoryService:
         self._ensure_mutable(category, user)
         if self.categories.has_expenses(category.id):
             raise ApiError("CATEGORY_IN_USE", "Категория используется в расходах", 409)
+        if self.categories.has_budgets(category.id):
+            raise ApiError("CATEGORY_IN_USE", "Категория используется в бюджетах", 409)
         db.session.delete(category)
         db.session.commit()
 

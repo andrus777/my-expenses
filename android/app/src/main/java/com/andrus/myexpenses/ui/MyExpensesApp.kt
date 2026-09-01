@@ -21,6 +21,7 @@ import com.andrus.myexpenses.domain.model.Category
 import com.andrus.myexpenses.domain.model.Expense
 import com.andrus.myexpenses.domain.model.SyncStatus
 import com.andrus.myexpenses.domain.repository.AuthRepository
+import com.andrus.myexpenses.domain.repository.BudgetRepository
 import com.andrus.myexpenses.domain.repository.ExpenseRepository
 import com.andrus.myexpenses.domain.repository.ReceiptRepository
 import com.andrus.myexpenses.domain.repository.SubscriptionRepository
@@ -40,6 +41,7 @@ fun MyExpensesApp(
     subscriptionRepository: SubscriptionRepository,
     receiptRepository: ReceiptRepository,
     statisticsRepository: StatisticsRepository,
+    budgetRepository: BudgetRepository,
 ) {
     val navController = rememberNavController()
     val appViewModel: AppViewModel = viewModel(factory = AppViewModel.Factory(authRepository))
@@ -50,6 +52,7 @@ fun MyExpensesApp(
     )
     val receiptViewModel: ReceiptViewModel = viewModel(factory = ReceiptViewModel.Factory(receiptRepository))
     val statisticsViewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory(statisticsRepository))
+    val budgetViewModel: BudgetViewModel = viewModel(factory = BudgetViewModel.Factory(budgetRepository, expenseRepository))
     val appState by appViewModel.state.collectAsStateWithLifecycle()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(appState) {
@@ -67,6 +70,7 @@ fun MyExpensesApp(
         if (appState is UiState.Content) {
             expenseViewModel.refresh()
             subscriptionViewModel.refresh()
+            budgetViewModel.refresh()
         }
     }
     NavHost(navController, startDestination = LOGIN) {
@@ -85,7 +89,7 @@ fun MyExpensesApp(
             ) { navController.popBackStack() }
         }
         composable(MAIN) {
-            MainScreen(expenseViewModel, subscriptionViewModel, receiptViewModel, statisticsViewModel, appViewModel::logout)
+            MainScreen(expenseViewModel, subscriptionViewModel, receiptViewModel, statisticsViewModel, budgetViewModel, appViewModel::logout)
         }
     }
     if (appState is UiState.Loading) {
@@ -112,12 +116,17 @@ private fun MainScreen(
     subscriptionViewModel: SubscriptionViewModel,
     receiptViewModel: ReceiptViewModel,
     statisticsViewModel: StatisticsViewModel,
+    budgetViewModel: BudgetViewModel,
     onLogout: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val budgetState by budgetViewModel.state.collectAsStateWithLifecycle()
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
+    LaunchedEffect(route) {
+        if (route == "home" || route == "budgets") budgetViewModel.refresh()
+    }
     Scaffold(
         bottomBar = {
             if (route in destinations.map { it.route }) NavigationBar {
@@ -151,8 +160,10 @@ private fun MainScreen(
             composable("home") {
                 HomeScreen(
                     state,
+                    budgetState.budgets,
                     onLogout,
                     { navController.navigate("receipt/add") },
+                    { navController.navigate("budgets") },
                 ) { navController.navigate("expense/edit/$it") }
             }
             composable("history") { HistoryScreen(state, viewModel::retry) { navController.navigate("expense/edit/$it") } }
@@ -174,6 +185,11 @@ private fun MainScreen(
             }
             composable("subscriptions") { SubscriptionScreen(subscriptionViewModel) }
             composable("statistics") { StatisticsScreen(statisticsViewModel) }
+            composable("budgets") { BudgetScreen(budgetViewModel, { navController.navigate("budget/add") }) { navController.navigate("budget/edit/$it") } }
+            composable("budget/add") { BudgetForm(budgetViewModel, null) { navController.popBackStack() } }
+            composable("budget/edit/{id}") { entry ->
+                BudgetForm(budgetViewModel, budgetState.budgets.firstOrNull { it.id == entry.arguments?.getString("id") }) { navController.popBackStack() }
+            }
         }
     }
 }
@@ -181,14 +197,17 @@ private fun MainScreen(
 @Composable
 private fun HomeScreen(
     state: ExpensesUiState,
+    budgets: List<com.andrus.myexpenses.domain.model.Budget>,
     onLogout: () -> Unit,
     onReceipt: () -> Unit,
+    onBudgets: () -> Unit,
     onEdit: (String) -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("Мои расходы", style = MaterialTheme.typography.headlineMedium)
         Text("Всего: ${state.expenses.sumOf { it.amountMinor }.money()} RUB")
         SyncBanner(state)
+        BudgetSummary(budgets, onBudgets)
         Spacer(Modifier.height(16.dp))
         Text("Последние операции", style = MaterialTheme.typography.titleMedium)
         Box(Modifier.weight(1f)) { ExpenseList(state.expenses.take(5), onEdit) }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: My Expenses API
-  version: 0.6.0
+  version: 0.7.0
 paths:
   /api/v1/auth/register:
     post:
@@ -339,6 +339,51 @@ paths:
       responses:
         "200": {description: Total, operation count, daily average and comparison}
         "400": {$ref: "#/components/responses/ApiError"}
+  /api/v1/budgets:
+    get:
+      summary: List category budgets with calculated usage and threshold events
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: User budgets}
+    post:
+      summary: Create a category budget
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BudgetInput"}
+      responses:
+        "201": {description: Budget created}
+        "400": {$ref: "#/components/responses/ApiError"}
+        "409": {$ref: "#/components/responses/ApiError"}
+  /api/v1/budgets/{budget_id}:
+    parameters:
+      - {name: budget_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      summary: Get a budget with calculated usage
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Budget}
+        "404": {$ref: "#/components/responses/ApiError"}
+    patch:
+      summary: Partially update a budget
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BudgetInput"}
+      responses:
+        "200": {description: Budget updated}
+        "404": {$ref: "#/components/responses/ApiError"}
+        "409": {$ref: "#/components/responses/ApiError"}
+    delete:
+      summary: Delete a budget and its threshold events
+      security: [{bearerAuth: []}]
+      responses:
+        "204": {description: Budget deleted}
+        "404": {$ref: "#/components/responses/ApiError"}
   /api/v1/statistics/categories:
     get:
       summary: Expense distribution by category
@@ -395,6 +440,16 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    BudgetInput:
+      type: object
+      required: [category_id, amount, period, start_date, end_date]
+      properties:
+        category_id: {type: string, format: uuid}
+        amount: {$ref: "#/components/schemas/Money"}
+        currency: {type: string, default: RUB, minLength: 3, maxLength: 3}
+        period: {type: string, enum: [WEEK, MONTH, YEAR, CUSTOM]}
+        start_date: {type: string, format: date}
+        end_date: {type: string, format: date}
     SubscriptionInput:
       type: object
       required: [name, category_id, amount, frequency, next_payment_date]

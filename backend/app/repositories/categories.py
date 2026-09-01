@@ -44,3 +44,11 @@ class CategoryRepository:
             db.session.scalar(select(Expense.id).where(Expense.category_id == category_id).limit(1))
             is not None
         )
+
+    def has_budgets(self, category_id: int) -> bool:
+        from app.models import Budget
+
+        return (
+            db.session.scalar(select(Budget.id).where(Budget.category_id == category_id).limit(1))
+            is not None
+        )
