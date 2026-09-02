@@ -1,7 +1,12 @@
 import uuid
+from unittest.mock import patch
 
+import pytest
+
+from app.auth.service import AuthService
 from app.extensions import db
 from app.models import Expense, Receipt, ReceiptJob
+from app.receipts.service import ReceiptService
 
 
 def _category_id(client, headers):
@@ -81,3 +86,29 @@ def test_user_cannot_read_or_finalize_another_users_receipt(client, auth_client)
 
     assert hidden_job.status_code == 404
     assert finalize.status_code == 404
+
+
+def test_finalize_rolls_back_expense_and_receipt_link_on_commit_failure(app, client, auth_client):
+    auth = auth_client("receipt-rollback@example.com")
+    _, job = _create_completed_job(client, auth["headers"])
+    category_id = _category_id(client, auth["headers"])
+
+    with app.app_context():
+        user = AuthService().get_user(auth["user"]["id"])
+        service = ReceiptService()
+        with (
+            patch.object(db.session, "commit", side_effect=RuntimeError("database failed")),
+            pytest.raises(RuntimeError, match="database failed"),
+        ):
+            service.finalize(
+                uuid.UUID(job["receipt"]["id"]),
+                uuid.UUID(category_id),
+                uuid.uuid4(),
+                user,
+            )
+
+        assert db.session.scalar(db.select(db.func.count()).select_from(Expense)) == 0
+        receipt = db.session.scalar(db.select(Receipt))
+        assert receipt is not None
+        assert receipt.finalized_expense_id is None
+        assert receipt.finalized_at is None

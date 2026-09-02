@@ -37,7 +37,7 @@ class DevelopmentConfig(BaseConfig):
 
 class TestingConfig(BaseConfig):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = "sqlite+pysqlite:///:memory:"
+    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL", "sqlite+pysqlite:///:memory:")
     JWT_SECRET_KEY = "testing-only-secret-that-is-at-least-32-bytes"
     RATELIMIT_STORAGE_URI = "memory://"
     RATELIMIT_ENABLED = False
@@ -57,7 +57,7 @@ CONFIGS = {
 
 
 def get_config(name: str | None = None) -> type[BaseConfig]:
-    environment = name or os.getenv("APP_ENV", "development")
+    environment = name if name is not None else os.environ.get("APP_ENV", "development")
     try:
         return CONFIGS[environment]
     except KeyError as error:

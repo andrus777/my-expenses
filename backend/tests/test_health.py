@@ -30,7 +30,7 @@ def test_ready_returns_success_when_dependencies_are_available(app, client):
         "status": "ready",
         "checks": {"postgres": "ok", "redis": "ok"},
     }
-    execute.assert_called_once()
+    assert execute.call_count in {1, 2}  # SQLite uses SELECT; PostgreSQL also sets a timeout.
     redis.ping.assert_called_once_with()
 
 

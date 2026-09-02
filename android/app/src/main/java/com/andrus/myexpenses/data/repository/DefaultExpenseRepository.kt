@@ -122,6 +122,7 @@ class DefaultExpenseRepository(
         scheduler.schedule()
     }
 
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun sync(): SyncOutcome {
         val ownerId = currentUserId.first() ?: return SyncOutcome.SUCCESS
         return try {
@@ -143,6 +144,7 @@ class DefaultExpenseRepository(
         categoryDao.upsertAll(categories)
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun syncPending(local: ExpenseEntity) {
         try {
             when (PendingAction.valueOf(local.pendingAction)) {

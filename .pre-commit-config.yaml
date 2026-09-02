@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff lint
+        entry: ruff check backend
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+      - id: ruff-format
+        name: Ruff format
+        entry: ruff format --check backend
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+      - id: mypy
+        name: mypy typed backend core
+        entry: mypy --config-file backend/pyproject.toml backend/app/config.py backend/app/observability.py backend/app/receipts/provider.py backend/app/schemas/statistics.py backend/app/subscriptions/calculator.py
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+      - id: whitespace
+        name: Check whitespace errors
+        entry: git diff --check --cached
+        language: system
+        pass_filenames: false

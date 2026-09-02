@@ -36,7 +36,14 @@ python -m venv .venv
 .venv/Scripts/pytest
 .venv/Scripts/ruff check .
 .venv/Scripts/ruff format --check .
+.venv/Scripts/mypy
+.venv/Scripts/pytest --cov=app --cov-report=term-missing --cov-report=xml
 ```
+
+Ruff is the single Python formatter and linter. Coverage includes branch coverage and fails below
+85%. From the repository root on Windows, install the hooks with
+`backend/.venv/Scripts/pre-commit install` and run them with
+`backend/.venv/Scripts/pre-commit run --all-files` (`backend/.venv/bin/pre-commit` on Unix).
 
 Database migrations are managed with Flask-Migrate. Stage 2 introduces users and authentication; apply its migration before using the API:
 
@@ -110,5 +117,9 @@ is enabled only for debug builds. Build and run unit tests with:
 
 ```bash
 cd android
-./gradlew testDebugUnitTest assembleDebug ktlintCheck
+./gradlew ktlintCheck detekt lintDebug testDebugUnitTest assembleDebug
 ```
+
+GitHub Actions runs the same backend and Android gates for every push and pull request. Backend
+integration tests use an ephemeral PostgreSQL 17 service. Dependency caches are keyed only from
+declared project files and never contain application secrets.

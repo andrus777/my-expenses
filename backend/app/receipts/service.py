@@ -133,4 +133,7 @@ class ReceiptService:
             raise ApiError(
                 "RECEIPT_FINALIZATION_CONFLICT", "Чек не удалось подтвердить повторно", 409
             ) from error
+        except Exception:
+            db.session.rollback()
+            raise
         return expense, True

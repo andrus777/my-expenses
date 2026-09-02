@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("androidx.room")
     id("org.jlleitschuh.gradle.ktlint")
+    id("dev.detekt")
 }
 
 android {
@@ -77,6 +78,16 @@ dependencies {
 ktlint {
     android.set(true)
     version.set("1.7.1")
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom("$rootDir/config/detekt/detekt.yml")
+}
+
+tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+    jvmTarget = "17"
 }
 
 room {
