@@ -1,9 +1,23 @@
 openapi: 3.1.0
 info:
   title: My Expenses API
-  version: 0.8.0
+  version: 1.0.0
   description: Every response carries X-Request-ID; every error body repeats it as request_id.
+servers:
+  - url: http://localhost:8000
+    description: Local Docker Compose
 paths:
+  /health:
+    get:
+      summary: Process liveness
+      responses:
+        "200": {description: API process is alive}
+  /ready:
+    get:
+      summary: PostgreSQL and Redis readiness
+      responses:
+        "200": {description: Required infrastructure is available}
+        "503": {$ref: "#/components/responses/ApiError"}
   /api/v1/auth/register:
     post:
       summary: Register a user

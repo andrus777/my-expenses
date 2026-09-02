@@ -1,0 +1,65 @@
+{
+  "info": {
+    "name": "My Expenses API",
+    "description": "Portfolio API collection. Login stores accessToken and refreshToken automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8000"},
+    {"key": "email", "value": "demo@my-expenses.local"},
+    {"key": "password", "value": "set-the-password-used-by-seed"},
+    {"key": "accessToken", "value": ""},
+    {"key": "refreshToken", "value": ""},
+    {"key": "categoryId", "value": "10000000-0000-0000-0000-000000000001"},
+    {"key": "expenseId", "value": ""},
+    {"key": "subscriptionId", "value": ""},
+    {"key": "jobId", "value": ""},
+    {"key": "receiptId", "value": ""},
+    {"key": "budgetId", "value": ""}
+  ],
+  "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{accessToken}}", "type": "string"}]},
+  "item": [
+    {"name": "Health", "item": [
+      {"name": "Liveness", "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/health"}},
+      {"name": "Readiness", "request": {"auth": {"type": "noauth"}, "method": "GET", "url": "{{baseUrl}}/ready"}}
+    ]},
+    {"name": "Auth", "item": [
+      {"name": "Register", "request": {"auth": {"type": "noauth"}, "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"}, "url": "{{baseUrl}}/api/v1/auth/register"}},
+      {"name": "Login", "event": [{"listen": "test", "script": {"exec": ["const json = pm.response.json();", "pm.collectionVariables.set('accessToken', json.tokens.access_token);", "pm.collectionVariables.set('refreshToken', json.tokens.refresh_token);"]}}], "request": {"auth": {"type": "noauth"}, "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"}, "url": "{{baseUrl}}/api/v1/auth/login"}},
+      {"name": "Me", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/users/me"}},
+      {"name": "Refresh", "request": {"auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{refreshToken}}", "type": "string"}]}, "method": "POST", "url": "{{baseUrl}}/api/v1/auth/refresh"}},
+      {"name": "Logout", "request": {"auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{refreshToken}}", "type": "string"}]}, "method": "POST", "url": "{{baseUrl}}/api/v1/auth/logout"}}
+    ]},
+    {"name": "Categories", "item": [
+      {"name": "List", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/categories"}},
+      {"name": "Create", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"name\": \"Питомцы\"}"}, "url": "{{baseUrl}}/api/v1/categories"}}
+    ]},
+    {"name": "Expenses", "item": [
+      {"name": "List filtered", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/expenses?page=1&per_page=20&sort=expense_date&order=desc"}},
+      {"name": "Create idempotently", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"category_id\": \"{{categoryId}}\",\n  \"amount\": \"499.90\",\n  \"currency\": \"RUB\",\n  \"expense_date\": \"2026-09-02\",\n  \"merchant\": \"Demo shop\",\n  \"client_operation_id\": \"{{$guid}}\"\n}"}, "url": "{{baseUrl}}/api/v1/expenses"}},
+      {"name": "Get", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/expenses/{{expenseId}}"}},
+      {"name": "Update", "request": {"method": "PATCH", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"comment\": \"Updated from Postman\"}"}, "url": "{{baseUrl}}/api/v1/expenses/{{expenseId}}"}},
+      {"name": "Soft delete", "request": {"method": "DELETE", "url": "{{baseUrl}}/api/v1/expenses/{{expenseId}}"}}
+    ]},
+    {"name": "Subscriptions", "item": [
+      {"name": "List", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/subscriptions"}},
+      {"name": "Confirm payment", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"client_operation_id\": \"{{$guid}}\"}"}, "url": "{{baseUrl}}/api/v1/subscriptions/{{subscriptionId}}/payments"}}
+    ]},
+    {"name": "Receipts", "item": [
+      {"name": "Queue fake receipt", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"receipt_data\": \"demo-qr-value\"}"}, "url": "{{baseUrl}}/api/v1/receipts"}},
+      {"name": "Poll job", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/receipts/jobs/{{jobId}}"}},
+      {"name": "Finalize", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"category_id\": \"{{categoryId}}\", \"client_operation_id\": \"{{$guid}}\"}"}, "url": "{{baseUrl}}/api/v1/receipts/{{receiptId}}/finalize"}}
+    ]},
+    {"name": "Statistics", "item": [
+      {"name": "Summary", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/statistics/summary?date_from=2026-08-01&date_to=2026-09-02&currency=RUB"}},
+      {"name": "Categories", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/statistics/categories?date_from=2026-08-01&date_to=2026-09-02"}},
+      {"name": "Timeline", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/statistics/timeline?date_from=2026-08-01&date_to=2026-09-02&interval=day"}},
+      {"name": "Subscriptions", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/statistics/subscriptions"}}
+    ]},
+    {"name": "Budgets", "item": [
+      {"name": "List", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/budgets"}},
+      {"name": "Create", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"category_id\": \"{{categoryId}}\",\n  \"amount\": \"25000.00\",\n  \"period\": \"MONTH\",\n  \"start_date\": \"2026-09-01\",\n  \"end_date\": \"2026-09-30\"\n}"}, "url": "{{baseUrl}}/api/v1/budgets"}},
+      {"name": "Get", "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/budgets/{{budgetId}}"}}
+    ]}
+  ]
+}

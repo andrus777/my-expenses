@@ -18,8 +18,8 @@ def ready():  # type: ignore[no-untyped-def]
     try:
         if db.session.get_bind().dialect.name == "postgresql":
             db.session.execute(
-                text("SET LOCAL statement_timeout = :timeout_ms"),
-                {"timeout_ms": current_app.config["READINESS_DB_TIMEOUT_MS"]},
+                text("SELECT set_config('statement_timeout', :timeout_ms, true)"),
+                {"timeout_ms": str(current_app.config["READINESS_DB_TIMEOUT_MS"])},
             )
         db.session.execute(text("SELECT 1"))
         checks["postgres"] = "ok"

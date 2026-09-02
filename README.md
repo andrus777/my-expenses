@@ -1,125 +1,172 @@
 # My Expenses
 
-Portfolio-grade client-server application for personal expense tracking.
+Portfolio-grade client-server expense tracker: an offline-first Android application backed by a
+production-oriented Flask API. It covers authentication, expenses, subscriptions, asynchronous
+receipt recognition, analytics and category budgets.
 
-## Stage 1: local infrastructure
+## Architecture
 
-Prerequisites: Docker with Docker Compose.
+- **Android:** Kotlin, Jetpack Compose/Material 3, Navigation, Room, DataStore, Retrofit/OkHttp,
+  Coroutines/Flow and WorkManager.
+- **API:** Python 3.12+, Flask application factory, SQLAlchemy 2.x, Alembic, JWT and Gunicorn.
+- **Data and jobs:** PostgreSQL is authoritative; Redis backs rate limiting and Celery jobs.
+- **Boundaries:** routes adapt HTTP, services own rules, repositories own queries, and receipt
+  provider payloads are normalized behind a backend-only interface.
+
+See the [system/container diagram](docs/architecture/system-context.md),
+[offline sync sequence](docs/architecture/offline-expense-sync.md),
+[receipt job sequence](docs/architecture/receipt-job.md), and [ADRs](docs/adr).
+
+## Local run
+
+Prerequisites: Git and Docker with Compose v2. Android additionally needs Android Studio/JDK 17.
+From a clean checkout:
 
 ```bash
+git clone https://github.com/andrus777/my-expenses.git
+cd my-expenses
 cp .env.example .env
-docker compose up --build
+docker compose up -d --build
+docker compose exec api flask --app wsgi:app db upgrade
 ```
 
-The API is available at `http://localhost:8000`:
+PowerShell copy command: `Copy-Item .env.example .env`. The values are local placeholders; replace
+database and JWT secrets before any shared deployment. Verify the stack:
 
-- `GET /health` reports that the process is alive;
-- `GET /ready` checks PostgreSQL and Redis connectivity.
+```bash
+curl http://localhost:8000/health
+curl http://localhost:8000/ready
+docker compose ps
+```
 
-Every response includes `X-Request-ID`. Clients may supply a safe correlation ID (letters, digits,
-`.`, `_`, `:`, `-`, at most 128 characters); otherwise the API generates a UUID. Every error body
-contains the same value in `request_id`. Backend request logs are JSON and contain only safe metadata:
-method, path without query parameters, status, duration, request ID and authenticated user ID.
-Headers and request bodies are never logged.
+`/health` is process liveness. `/ready` requires PostgreSQL and Redis. The API runs under Gunicorn
+at `http://localhost:8000`; the worker consumes receipt jobs independently.
 
-Set `LOG_LEVEL` to a standard Python logging level such as `DEBUG`, `INFO`, `WARNING` or `ERROR`.
-Redis connect/read timeouts, the PostgreSQL readiness statement timeout, and receipt-provider timeout
-are configured through the variables documented in `.env.example`. `/health` is process liveness only;
-`/ready` returns `503` unless both PostgreSQL and Redis respond.
+Create representative demo data (one user, 40 expenses, 3 subscriptions, 3 budgets):
 
-Run backend checks locally with Python 3.12+:
+```bash
+docker compose exec api flask --app wsgi:app seed-demo --email demo@my-expenses.local
+```
+
+The password is prompted, so it is not stored in the repository or shell history. The command is
+idempotent per email. System categories come from migrations. Stop with `docker compose down`; add
+`--volumes` only when intentionally erasing local data.
+
+### Android
+
+Open `android/` in Android Studio with JDK 17 and run `app` on an emulator. Debug calls
+`http://10.0.2.2:8000/api/v1/`. A physical device needs a reachable host address:
+
+```bash
+cd android
+./gradlew assembleDebug -PAPI_BASE_URL=http://192.168.1.10:8000/api/v1/
+```
+
+Cleartext HTTP is debug-only; production endpoints must use HTTPS.
+
+## API
+
+The complete OpenAPI 3.1 contract is [docs/openapi.yaml](docs/openapi.yaml). Import it into Swagger
+Editor/UI, or serve a local viewer:
+
+```bash
+docker run --rm -p 8081:8080 -e SWAGGER_JSON=/spec/openapi.yaml \
+  -v "$PWD/docs:/spec:ro" swaggerapi/swagger-ui
+```
+
+Swagger UI is then at `http://localhost:8081`. Import the
+[Postman collection](postman/My-Expenses.postman_collection.json), set its password to the value
+entered for `seed-demo`, and run Login. Public groups cover auth/users, categories/expenses,
+subscriptions/payments, receipts/jobs, statistics and budgets.
+
+All errors use one contract:
+
+```json
+{
+  "error": {"code": "EXPENSE_NOT_FOUND", "message": "Расход не найден", "details": {}},
+  "request_id": "correlation-id"
+}
+```
+
+Owned resources return 404 when absent or owned by another user, avoiding existence leaks.
+
+## Offline Sync
+
+Room is the expense source of truth. Mutations appear immediately as `PENDING_SYNC`; a
+network-constrained WorkManager job sends them later. Device `client_operation_id` UUIDs and a
+PostgreSQL unique constraint make creates idempotent. Successful responses reconcile server data
+and become `SYNCED`; transient failures back off, while permanent failures become `SYNC_ERROR`.
+MVP edits use last-write-wins with the server timestamp authoritative. See
+[ADR 003](docs/adr/003-offline-first-idempotency-conflicts.md).
+
+## Security
+
+- Passwords use Argon2; passwords, tokens and API keys are never logged.
+- Access JWTs last 15 minutes; 30-day refresh tokens rotate and have PostgreSQL revoke records.
+- Auth endpoints are Redis-rate-limited; Android encrypts auth state using Android Keystore.
+- Backend object authorization is mandatory and regression-tested. Receipt credentials stay on the
+  backend.
+- Every response carries `X-Request-ID`; JSON logs contain safe request metadata only.
+
+Configuration and bounded infrastructure/HTTP timeouts are documented in [.env.example](.env.example).
+
+## Testing
+
+Backend (Python 3.12+):
 
 ```bash
 cd backend
 python -m venv .venv
-.venv/Scripts/pip install -e ".[dev]"  # Windows
-.venv/Scripts/pytest
+.venv/Scripts/pip install -e ".[dev]"
 .venv/Scripts/ruff check .
 .venv/Scripts/ruff format --check .
 .venv/Scripts/mypy
 .venv/Scripts/pytest --cov=app --cov-report=term-missing --cov-report=xml
 ```
 
-Ruff is the single Python formatter and linter. Coverage includes branch coverage and fails below
-85%. From the repository root on Windows, install the hooks with
-`backend/.venv/Scripts/pre-commit install` and run them with
-`backend/.venv/Scripts/pre-commit run --all-files` (`backend/.venv/bin/pre-commit` on Unix).
+Use `.venv/bin/...` on Unix. Ruff is the formatter/linter, mypy checks typed core paths, branch
+coverage must remain at least 85%, and tests use only the fake receipt provider.
 
-Database migrations are managed with Flask-Migrate. Stage 2 introduces users and authentication; apply its migration before using the API:
-
-```bash
-docker compose exec api flask --app wsgi:app db upgrade
-```
-
-Authentication endpoints are under `/api/v1`:
-
-- `POST /auth/register` and `POST /auth/login` accept `email` and `password`;
-- `POST /auth/refresh` and `POST /auth/logout` require a refresh bearer token;
-- `GET /users/me` requires an access bearer token.
-
-Access tokens expire after 15 minutes. Refresh tokens expire after 30 days, rotate on refresh, and are stored server-side so logout and rotation revoke them immediately. See `docs/openapi.yaml` for the HTTP contract.
-
-Stage 3 adds system and user categories plus offline-safe expense CRUD:
-
-- `GET|POST /api/v1/categories` and `GET|PATCH|DELETE /api/v1/categories/{id}`;
-- `GET|POST /api/v1/expenses` and `GET|PATCH|DELETE /api/v1/expenses/{id}`;
-- expense amounts are decimal strings such as `"1250.50"`;
-- every expense mutation carries a UUID `client_operation_id`;
-- expense deletion is soft deletion;
-- expense lists support pagination, dates, category, amount, currency, source, search and sorting filters.
-
-System categories are inserted by migration and cannot be changed or deleted. User-owned resources are always scoped to the authenticated user.
-
-## Repository layout
-
-- `android/` — Kotlin/Compose Android client
-- `backend/` — Flask API and Celery worker
-- `docs/` — architecture and ADR documentation
-- `postman/` — API collections (introduced with public APIs)
-
-## Android client
-
-Stage 4 provides registration, login, session restoration through `GET /api/v1/users/me`,
-and the main four-tab application shell. Tokens are encrypted with an Android Keystore key
-before being persisted in DataStore; Room stores only the non-secret cached user profile.
-
-Stage 5 makes expenses offline-first. Adds, edits and deletes update Room immediately and are
-sent by a network-constrained WorkManager job. Pending operations survive process restarts,
-temporary failures use exponential backoff, and permanent failures are shown as `SYNC_ERROR`
-with a manual retry action. Categories must be loaded online once before the first offline add.
-See `docs/adr/0003-android-offline-first-expense-sync.md` for reconciliation details.
-
-Stage 6 adds subscription CRUD and atomic, idempotent payment confirmation. Each confirmed payment
-creates an expense, appends payment history and advances the next payment date. The Android client
-shows upcoming payments and schedules local notifications 7, 3 and 1 day before payment at 09:00.
-Notification permission is requested on Android 13 and newer.
-
-Stage 7 adds asynchronous receipt processing. `POST /api/v1/receipts` accepts fiscal/QR text and
-queues a Celery job; Android polls the backend for a normalized preview and never contacts an
-external receipt service. Local development uses `RECEIPT_PROVIDER=fake` and requires no API key.
-Set `RECEIPT_PROVIDER=external`, URL, key and timeout environment variables only when configuring a
-real adapter. Receipt confirmation is a separate idempotent operation that creates one Expense.
-
-Stage 8 adds authenticated backend analytics under `/api/v1/statistics`: summary and previous-period
-comparison, category distribution, day/week/month timeline, and projected subscription totals.
-Date ranges are inclusive and accept `date_from`/`date_to` in ISO format. The Android Statistics tab
-supports week, month, year and custom periods with explicit loading, empty and error states.
-Analytics never mixes currencies: `currency` defaults to `RUB`, and no exchange-rate conversion is implied.
-
-Stage 9 adds category budgets with explicit week/month/year/custom date ranges. Budget responses
-include spent, remaining and usage percentage calculated from non-deleted expenses in the same
-category and currency. Durable 80% and 100% threshold events are recorded once per budget period.
-Android shows compact progress on Home, a budget list/editor, and warning/exceeded states.
-
-The debug build connects to `http://10.0.2.2:8000/api/v1/` from the Android emulator.
-Override it when needed with `-PAPI_BASE_URL=https://example.com/api/v1/`. Cleartext traffic
-is enabled only for debug builds. Build and run unit tests with:
+Android gate:
 
 ```bash
 cd android
-./gradlew ktlintCheck detekt lintDebug testDebugUnitTest assembleDebug
+./gradlew ktlintCheck detekt lintDebug testDebugUnitTest assembleDebug --no-daemon
 ```
 
-GitHub Actions runs the same backend and Android gates for every push and pull request. Backend
-integration tests use an ephemeral PostgreSQL 17 service. Dependency caches are keyed only from
-declared project files and never contain application secrets.
+From the root, install hooks with `backend/.venv/Scripts/pre-commit install` (or the Unix `bin`
+path), then run `backend/.venv/Scripts/pre-commit run --all-files`.
+
+## CI/CD
+
+[GitHub Actions](.github/workflows/ci.yml) runs on push and pull requests. Backend uses Python 3.12
+and PostgreSQL 17, validates migrations, lint/format, mypy, pytest and coverage. Android runs ktlint,
+detekt, lint, unit tests and `assembleDebug` on JDK 17. Dependency caches contain no app secrets.
+
+This repository produces a tested build, not a production deployment. Production needs injected
+unique secrets, TLS, backups and an environment-specific database.
+
+## Screenshots
+
+Use the reproducible, non-personal demo data and follow the
+[capture checklist](docs/screenshots/README.md). Add images only after visual review.
+
+## Roadmap
+
+- Multi-device optimistic locking beyond MVP last-write-wins.
+- Explicit exchange rates and consolidated multi-currency reporting.
+- Production receipt provider integration and contract monitoring.
+- Release signing, deployment and backup/restore runbooks.
+- Accessibility/device-matrix UI tests and polished portfolio screenshots.
+
+## Repository layout
+
+```text
+android/             Android application
+backend/             Flask API, Celery worker, migrations and tests
+docs/adr/            Architecture decisions
+docs/architecture/   System and sequence diagrams
+docs/openapi.yaml    OpenAPI 3.1 specification
+postman/             Importable API collection
+.github/workflows/   CI quality gates
+```
